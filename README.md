@@ -1,4 +1,4 @@
-mpc
+Coding Exercise for the Minnesota Population Center 
 ===
 
-MPC Exercise
+Here's my readme, more to follow...

@@ -1,8 +1,8 @@
 import re
+import tables
 
-
-def loadschema(filename):
-  types = {}
+def load_schema(filename):
+  schemas = {}
 
   read_values = False
 
@@ -12,8 +12,8 @@ def loadschema(filename):
     for line in records:
       if 'record type' in line:
         rtype        = line.split('"')[1]
-        types[rtype] = {}
-        current     = types[rtype]
+        schemas[rtype] = {}
+        current     = schemas[rtype]
       elif 'data list' in line:
         read_values = True
       elif '.' in line:
@@ -21,7 +21,7 @@ def loadschema(filename):
       elif read_values:
         fields = entry.search(line)
         try:
-          current[fields.group('name')] = [int(fields.group('start')),
+          current[fields.group('name')] = [int(fields.group('start'))-1,
                                            int(fields.group('end')) ]
         except:
           # if we can't parse, print something.
@@ -31,7 +31,47 @@ def loadschema(filename):
         continue
     # the file gets closed automatically when we
     # leave the with block.
-  return types
+  return schemas
 
 
-print loadschema('us1850a_records.txt')
+table_data = { 'H': { 'file': 'us1850a_households.dat',
+                      'name': 'households',
+                      'description': '1850 Census Households'},
+               'P': { 'file': 'us1850a_people.dat',
+                      'name': 'people',
+                      'description': '1850 Census Households'} }
+
+
+def build_table(database, group, info, schema):
+  class table_desc(tables.IsDescription):
+    pass
+  
+  for column in schema:
+    start = schema[column][0]
+    end   = schema[column][1]
+    table_desc.columns[column] = tables.StringCol(end-start)
+  
+  table = database.create_table(group, info['name'], 
+                                table_desc, info['description'])
+  row = table.row 
+  with open(info['file']) as records:
+    for record in records:
+      for column in schema:
+        start = schema[column][0]
+        end   = schema[column][1]
+        row[column] = record[start:end].strip()
+      row.append()
+      break 
+
+def build_tables(filename, table_data, schemas):
+  database = tables.open_file(filename, mode='w')
+  group = database.create_group("/","census","Census Data")
+
+  for table in table_data:
+    build_table(database, group, table_data[table], schemas[table])
+
+  database.close()
+
+schemas = load_schema('us1850a_records.txt')
+
+build_tables('census.h5', table_data, schemas)

@@ -64,7 +64,6 @@ def build_table(database, group, info, schema):
         end   = schema[column][1]
         row[column] = record[start:end].strip()
       row.append()
-      break 
     table.flush()
 
 def build_tables(info, table_data, schemas):

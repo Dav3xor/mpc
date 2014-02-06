@@ -41,6 +41,9 @@ table_data = { 'H': { 'file': 'us1850a_households.dat',
                       'name': 'people',
                       'description': '1850 Census Households'} }
 
+database_info = { 'name': 'census1850', 
+                  'description': '1850 Census',
+                  'filename': 'census.h5' }
 
 def build_table(database, group, info, schema):
   class table_desc(tables.IsDescription):
@@ -62,10 +65,11 @@ def build_table(database, group, info, schema):
         row[column] = record[start:end].strip()
       row.append()
       break 
+    table.flush()
 
-def build_tables(filename, table_data, schemas):
-  database = tables.open_file(filename, mode='w')
-  group = database.create_group("/","census","Census Data")
+def build_tables(info, table_data, schemas):
+  database = tables.open_file(info['filename'], mode='w')
+  group = database.create_group("/",info['name'],info['description'])
 
   for table in table_data:
     build_table(database, group, table_data[table], schemas[table])
@@ -74,4 +78,4 @@ def build_tables(filename, table_data, schemas):
 
 schemas = load_schema('us1850a_records.txt')
 
-build_tables('census.h5', table_data, schemas)
+build_tables(database_info, table_data, schemas)

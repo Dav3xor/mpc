@@ -174,6 +174,24 @@ def male_to_female(households,schema):
   return (float(males)/float(total)*100.0, 
          float(females)/float(total)*100.0)
 
+def household_size(households,schema):
+  states = {}
+  for key in households:
+    household = households[key]['record']
+    people = int(get_value('NUMPREC',
+                           schema,
+                           household))
+    state  = int(get_value('STATEFIP',
+                           schema,
+                           household))
+    if state not in states:
+      states[state] = []
+    states[state].append(people)
+  for state in states:
+    avg = float(sum(states[state]))/float(len(states[state]))
+    states[state] = avg 
+  return states
+
 def write_errors(orphans, incomplete, schemas):
   with open('errors.txt','w') as records:
     person_schema = schemas['P']

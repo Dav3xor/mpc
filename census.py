@@ -1,4 +1,6 @@
-from injest import *
+from files  import *
+from stats  import *
+from util   import *
 from pprint import pprint
 
 # first define some data for handling files:
@@ -28,11 +30,5 @@ incomplete = remove_incomplete(households,schemas['H'])
 write_households(households)
 write_errors(orphans, incomplete, schemas)
 
-male_percent, female_percent = male_to_female(households,schemas['P'])
-household_sizes = household_size(households,schemas['H'])
-pprint(household_sizes)
-print "males: %s" % male_percent
-print "females: %s" % female_percent
-print len(households)
-print len(orphans)
-print len(incomplete)
+dostats(households,schemas)
+

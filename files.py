@@ -1,35 +1,11 @@
 import re
 import tables
 import sys
-
+from util import *
 
 # a spinner for showing progress on
 # long term tasks.
 
-class spinner():
-  def __init__(self, message, rate):
-    self.bars     = "/-\\|/-\\|"
-    self.counter  = 1 
-    self.rate     = rate
-
-    sys.stdout.write("%-30s -- " % message)
-    sys.stdout.write("|")
-    sys.stdout.flush()
-  
-  # can't use a destructor here because it only triggers
-  # when the garbage collector runs, and we care about
-  # when this gets printed...
-  def done(self):
-    count = 0
-    sys.stdout.write("\bDone\n")
-    sys.stdout.flush()
-
-  def spin(self):
-    if self.counter % self.rate == 0:
-      bar_index = (self.counter/8)%len(self.bars)
-      sys.stdout.write("\b%s" % self.bars[bar_index])
-      sys.stdout.flush()
-    self.counter += 1
 
 # a function to load schemas from *_records.txt files
     
@@ -72,10 +48,6 @@ def load_schema(filename):
 
 
 
-def get_value(key,schema,record):
-  start = schema[key][0]
-  end   = schema[key][1]
-  return record[start:end]
 
 def load_households(table_data, schemas):
   households = {}
@@ -155,42 +127,6 @@ def write_households(households):
         records.write(person)
     meter.done()
 
-def male_to_female(households,schema):
-  males   = 0
-  females = 0
-  total   = 0
-  for key in households:
-    household = households[key]
-    for person in household['people']:
-      sex = get_value('SEX',
-                      schema,
-                      person)
-      if sex=="1":
-        males   += 1
-        total   += 1 
-      if sex=="2":
-        females += 1 
-        total   += 1
-  return (float(males)/float(total)*100.0, 
-         float(females)/float(total)*100.0)
-
-def household_size(households,schema):
-  states = {}
-  for key in households:
-    household = households[key]['record']
-    people = int(get_value('NUMPREC',
-                           schema,
-                           household))
-    state  = int(get_value('STATEFIP',
-                           schema,
-                           household))
-    if state not in states:
-      states[state] = []
-    states[state].append(people)
-  for state in states:
-    avg = float(sum(states[state]))/float(len(states[state]))
-    states[state] = avg 
-  return states
 
 def write_errors(orphans, incomplete, schemas):
   with open('errors.txt','w') as records:

@@ -1,0 +1,53 @@
+Parts of this I'm proud of, parts I wish I had spent more time
+on improving my code instead of just producing a whole bunch of it.
+
+I started out using this as an exercise in learning the pytables
+library.  I fairly quickly figured out that pytables was going
+to make me do most of the work myself, so I decided to just
+ditch the library and go it alone in memory.  The dataset
+fits fairly comfortably in my laptops main memory, so why not?
+
+Then I quickly found out how much code I was going to have to
+write if I didn't use any sort of database, and I got into
+a rush to finish before the time limit, not particularly
+what I started out to do, but oh well.
+
+Reusability:  I'd think the little ascii spinner class I 
+wrote for this could turn into something reusable, and
+the schema parser could also be spruced up nicely by
+combining it with a container class to hold all
+the data.
+
+I generally try to write code using the dry principle, there
+are several places where this fails.  particularly where
+the pattern "open file, start ascii spinner, <do stuff>
+cleanup" is found, I would like to write a decorator to
+remove most of the cut and paste...
+
+I would have liked to use more classes; there's no need
+to pass the schema around separate from the data.
+
+Also, the organization is ok, but a little messy.
+
+Overall I loved the assignment, this was a lot of fun.  Given
+a couple more hours, I'd definitely change some things around
+and clean some stuff up, but that's always the case.
+
+
+
+
+to run the program:
+
+1.  you will need Python 2.7+
+
+4.  4 gigs of memory (unless you don't mind letting it swap forever)
+
+2.  copy the data files into the directory containing the python scripts
+
+3.  'python census.py'
+
+4.  wait for it to finish.
+
+
+
+

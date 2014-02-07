@@ -9,5 +9,5 @@ state_codes = {
     'MN': '27', 'MI': '26', 'RI': '44', 'KS': '20', 'MT': '30', 'MS': '28',
     'SC': '45', 'KY': '21', 'OR': '41', 'SD': '46'
 }
-
+reverse_states = {int(v):k for k, v in state_codes.items()}
 sexes = { 'MALE': 1, 'FEMALE': 2 }

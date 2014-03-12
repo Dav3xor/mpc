@@ -46,105 +46,161 @@ def load_schema(filename):
     # leave the with block.
   return schemas
 
+class Entity(object):
+  def __init__(self, record):
+    self.record = record
+  def __getitem__(self, key):
+    start = self.schema[key][0]
+    end   = self.schema[key][1]
+    return  self.record[start:end]
+
+class Person(Entity):
+  schema = {}
+  @staticmethod 
+  def set_schema(newschema):
+    Person.schema = newschema
+
+class Household(Entity):
+  schema = {}
+  def __init__(self, record):
+    super(Household, self).__init__(record)
+    self.people = []
+  @staticmethod 
+  def set_schema(newschema):
+    Household.schema = newschema
+
+  def add_person(self,person):
+      self.people.append(person)
+
+  def num_people(self):
+    return len(self.people)
 
 
+class Households():
+  def __init__(self):
+    self.households = {}
+    self.orphans    = []
 
-def load_households(table_data, schemas):
-  households = {}
-  orphans    = []
-  household_schema = schemas['H']
-  person_schema    = schemas['P']
+  def __iter__(self):
+    """ allows you to iterate over households contained in
+        the class with a simple 
+        
+        >>> for household in households:
+        ...   print household
+    """
+    for i in self.households:
+      # i is the key, so we yield
+      # the object instead, it's cleaner.
+      yield self.households[i]
+
+  def __getitem__(self, key):
+    """ allows looking up a specific household by it's key --
+
+        >>> households[key]['SERIAL']
+        1
+    """
+    if self.households.has_key(key):
+      return self.households[key]
+    else:
+      return None
+
+  def add_household(self, record):
+    household = Household(record)
+    key = household['SERIAL']
+    if key in self.households:
+      print "duplicate household %s" % key
+    else:
+      self.households[key] = household
+  def add_person(self, record):
+    person = Person(record)
+    hhkey = person['SERIALP']
+    if hhkey not in self.households:
+      print "-" + hhkey
+      self.orphans.append(person)
+    else:
+      self.households[hhkey].add_person(person)
+
+  def delete(self, key):
+    del self.households[key]
+
+def load_households(schemafile, householdsfile, peoplefile):
+  schemas = load_schema(schemafile) 
+  Household.set_schema(schemas['H'])
+  Person.set_schema(schemas['P'])
+  
+  households = Households()
   try:
-    with open(table_data['H']['file']) as records:
+    with open(householdsfile) as records:
       meter = spinner("Reading Household Data", 20)
       for record in records:
         meter.spin()
-        key = get_value('SERIAL',
-                        household_schema,
-                        record)
-        if key in households:
-          print "duplicate household%s" % key
-        else:
-          households[key] = { 'record':record,
-                              'people':[] }
+        households.add_household(record)
       meter.done() 
   except IOError:
-    print "Error: (load_households) could not open file: " + table_data['H']['file']
+    print "Error: (load_households) could not open file: " + householdsfile
     exit()
   try:
-    with open(table_data['P']['file']) as records:
+    with open(peoplefile) as records:
       meter = spinner("Reading Person Data",20)
       for record in records:
         meter.spin()
-        household = get_value('SERIALP',
-                              person_schema,
-                              record)
-        if household not in households:
-          pernum  = get_value('PERNUM',
-                              person_schema,
-                              record)
-          orphans.append(record)
-        else:
-          households[household]['people'].append(record)
+        households.add_person(record)
       meter.done()
   except IOError:
-    print "Error: (load_households) could not open file: " + table_data['H']['file']
+    print "Error: (load_households) could not open file: " + peoplefile
     exit()
     meter.done() 
-  return households,orphans
+  return households
         
-def remove_incomplete(households,schema):
+def remove_incomplete(households):
   removals = []
   incomplete = {}
   
   meter = spinner("Removing Incomplete Households", 20)
-
-  for key in households:
+  for household in households:
     meter.spin()
-    household = households[key]
-    numpeople = int(get_value('NUMPREC',
-                              schema,
-                              household['record']))
-    if numpeople != len(household['people']):
-      removals.append(key)
+    numpeople = int(household['NUMPREC'])
+    if numpeople != household.num_people():
+      removals.append(household['SERIAL'])
+      #print str(numpeople) + "-" + str(household.num_people())
+    else:
+      pass
+      #print str(numpeople) + "+" + str(household.num_people())
 
   for key in removals:
     meter.spin()
     incomplete[key] = households[key]
-    households.pop(key,None)
+    households.delete(key)
   meter.done()
-  
-  return incomplete
+  households.incomplete = incomplete 
   
 def write_households(households):
   with open('merged.txt','w') as records:
     meter = spinner("Writing Merged Data", 20)
-    for key in households:
+    for household in households:
       meter.spin()
-      household = households[key]
-      records.write(household['record'])
-      for person in household['people']:
-        records.write(person)
+      records.write(household.record)
+      for person in household.people:
+        records.write(person.record)
     meter.done()
 
 
-def write_errors(orphans, incomplete, schemas):
+def write_errors(households):
   with open('errors.txt','w') as records:
-    person_schema = schemas['P']
     meter = spinner("Writing Errors", 20)
     counter = 0 
 
-    records.write("%d Incomplete Households:\n" % len(incomplete))
-    for key in incomplete:
+    records.write("%d Incomplete Households:\n" % len(households.incomplete))
+    for household in households.incomplete:
       meter.spin()
       if counter % 7 == 0:
         records.write("\n")
       counter += 1
-      records.write("%s " % key)
+      records.write("%s " % household)
     
-    records.write("\n\n%d Orphaned People:\n" % len(incomplete))
+    records.write("\n\n%d Orphaned People:\n" % len(households.orphans))
       
-    for orphan in orphans:
+    for orphan in households.orphans:
       meter.spin()
 
       if counter % 10 == 0:
@@ -160,25 +216,13 @@ def write_errors(orphans, incomplete, schemas):
       # there's no problem and if it isn't I will include
       # a few facts about the person...
 
-      age       = get_value('AGE',
-                            person_schema,
-                            orphan)
-      sex       = get_value('SEX',
-                            person_schema,
-                            orphan)
-      dob       = get_value('BIRTHYR',
-                            person_schema,
-                            orphan)
-      first     = get_value('NAMEFRST',
-                            person_schema,
-                            orphan)
-      last      = get_value('NAMELAST',
-                            person_schema,
-                            orphan)
+      age       = orphan['AGE']
+      sex       = orphan['SEX']
+      dob       = orphan['BIRTHYR']
+      first     = orphan['NAMEFRST']
+      last      = orphan['NAMELAST']
                
-      household = get_value('SERIALP',
-                            person_schema,
-                            orphan)
+      household = orphan['SERIALP']
 
       records.write("%s %s %s %s %s %s\n" % (household,first,last,sex,age,dob))
     

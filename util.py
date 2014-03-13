@@ -26,9 +26,14 @@ class spinner():
       sys.stdout.flush()
     self.counter += 1
 
-# simple helper function for getting a
-# value from a record using a key
-def get_value(key,schema,record):
-  start = schema[key][0]
-  end   = schema[key][1]
-  return record[start:end]
+def read_with_spinner(filename, msg, visitor_function):
+  try:
+    with open(filename) as records:
+      meter = spinner(msg, 20)
+      for record in records:
+        meter.spin()
+        visitor_function(record)
+      meter.done() 
+  except IOError:
+    print "Error: (load_households) could not open file: " + filename
+    exit()

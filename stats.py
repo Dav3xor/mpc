@@ -2,17 +2,17 @@ from util import *
 from codes import *
 import operator
 
-def dostats(households, schemas):
+def dostats(households):
   meter = spinner("Writing stats.txt",1)
   with open('stats.txt', 'w') as stats:
     meter.spin()
   
-    males,females = male_to_female(households,schemas['P'])
+    males,females = male_to_female(households)
     stats.write("Percentage Male:   %.1f\n" % males)
     stats.write("Percentage Female: %.1f\n\n" % females)
     meter.spin()
 
-    household_sizes = household_size(households,schemas['H'])
+    household_sizes = household_size(households)
     stats.write("Average Household Size (by state):\n")
     for key in household_sizes:
       stats.write("%s: %.1f\n" % (reverse_states[key], household_sizes[key]))
@@ -20,14 +20,14 @@ def dostats(households, schemas):
     meter.spin()
     
     
-    farms           = farm_households(households,schemas['H'])
+    farms           = farm_households(households)
     stats.write("Percentage of Households That Are Farms (by state):\n")
     for key in farms:
       stats.write("%s: %.1f\n" % (reverse_states[key], farms[key]))
     stats.write("\n")
     meter.spin()
 
-    male_names, female_names = common_names(households, schemas['P'])
+    male_names, female_names = common_names(households)
     stats.write("Most Common First Names:\n")
     
     stats.write("  Male:\n")
@@ -40,7 +40,7 @@ def dostats(households, schemas):
     stats.write("\n")
     meter.spin()
     
-    areas           = metropolitan_areas(households, schemas['H'])
+    areas           = metropolitan_areas(households)
     stats.write("Metropolitan Areas (estimated population):\n")
     for key in areas:
       area = areas[key]
@@ -50,16 +50,13 @@ def dostats(households, schemas):
 
   meter.done()
  
-def male_to_female(households,schema):
+def male_to_female(households):
   males   = 0
   females = 0
   total   = 0
-  for key in households:
-    household = households[key]
-    for person in household['people']:
-      sex = get_value('SEX',
-                      schema,
-                      person)
+  for household in households:
+    for person in household.people:
+      sex = person['SEX']
       if sex=="1":
         males   += 1
         total   += 1 
@@ -69,16 +66,11 @@ def male_to_female(households,schema):
   return (float(males)/float(total)*100.0, 
          float(females)/float(total)*100.0)
 
-def household_size(households,schema):
+def household_size(households):
   states = {}
-  for key in households:
-    household = households[key]['record']
-    people = int(get_value('NUMPREC',
-                           schema,
-                           household))
-    state  = int(get_value('STATEFIP',
-                           schema,
-                           household))
+  for household in households:
+    people = int(household['NUMPREC'])
+    state  = int(household['STATEFIP'])
     if state not in states:
       states[state] = []
     states[state].append(people)
@@ -87,16 +79,11 @@ def household_size(households,schema):
     states[state] = avg 
   return states
 
-def farm_households(households,schema):
+def farm_households(households):
   states = {}
-  for key in households:
-    household = households[key]['record']
-    farm   = int(get_value('FARM',
-                           schema,
-                           household))
-    state  = int(get_value('STATEFIP',
-                           schema,
-                           household))
+  for household in households:
+    farm   = int(household['FARM'])
+    state  = int(household['STATEFIP'])
     if state not in states:
       states[state] = [0,0]
     states[state][0] += 1
@@ -108,22 +95,17 @@ def farm_households(households,schema):
     states[state] = percent
   return states
 
-def metropolitan_areas(households,schema):
+def metropolitan_areas(households):
   areas = {7040:{'name': 'St. Louis', 'population':0},
            1120:{'name': 'Boston', 'population':0},
            6160:{'name': 'Philadelphia', 'population':0} }
-  for key in households:
-    household = households[key]['record']
-    metro = int(get_value('METRO',
-                           schema,
-                           household))
-    area  = int(get_value('METAREA',
-                           schema,
-                           household))
+  for household in households:
+    metro = int(household['METRO'])
+    area  = int(household['METAREA'])
 
     # if metro = 1, it's not actually in the metro area...
     if metro != 1 and area in areas:
-      areas[area]['population'] += len(households[key]['people'])
+      areas[area]['population'] += household.num_people()
 
   # expand from 1% to 100%...
   for area in areas:
@@ -131,18 +113,13 @@ def metropolitan_areas(households,schema):
   
   return areas
 
-def common_names(households,schema):
+def common_names(households):
   male_names = {}
   female_names = {}
-  for key in households:
-    household = households[key]
-    for person in household['people']:
-      name    = get_value('NAMEFRST',
-                          schema,
-                          person)
-      sex     = get_value('SEX',
-                          schema,
-                          person)
+  for household in households:
+    for person in household.people:
+      name    = person['NAMEFRST']
+      sex     = person['SEX']
       name = name.strip()
       if len(name):
         name = name.split()[0]  # some names include middle initial?

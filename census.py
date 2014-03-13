@@ -24,5 +24,5 @@ remove_incomplete(households)
 write_households(households)
 write_errors(households)
 
-#dostats(households)
+dostats(households)
 

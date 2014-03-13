@@ -2,9 +2,13 @@ import re
 import tables
 import sys
 from util import *
+from censusobjects import *
 
-# a spinner for showing progress on
-# long term tasks.
+# I like to keep all this file io stuff as separate functions 
+# outside of the households/household/person classes.  Keeps
+# the clutter out of the classes, and I'm not making a
+# proliferation of support classes (FactoryFactory...)
+
 
 
 # a function to load schemas from *_records.txt files
@@ -46,82 +50,7 @@ def load_schema(filename):
     # leave the with block.
   return schemas
 
-class Entity(object):
-  def __init__(self, record):
-    self.record = record
-  def __getitem__(self, key):
-    start = self.schema[key][0]
-    end   = self.schema[key][1]
-    return  self.record[start:end]
 
-class Person(Entity):
-  schema = {}
-  @staticmethod 
-  def set_schema(newschema):
-    Person.schema = newschema
-
-class Household(Entity):
-  schema = {}
-  def __init__(self, record):
-    super(Household, self).__init__(record)
-    self.people = []
-  @staticmethod 
-  def set_schema(newschema):
-    Household.schema = newschema
-
-  def add_person(self,person):
-      self.people.append(person)
-
-  def num_people(self):
-    return len(self.people)
-
-
-class Households():
-  def __init__(self):
-    self.households = {}
-    self.orphans    = []
-
-  def __iter__(self):
-    """ allows you to iterate over households contained in
-        the class with a simple 
-        
-        >>> for household in households:
-        ...   print household
-    """
-    for i in self.households:
-      # i is the key, so we yield
-      # the object instead, it's cleaner.
-      yield self.households[i]
-
-  def __getitem__(self, key):
-    """ allows looking up a specific household by it's key --
-
-        >>> households[key]['SERIAL']
-        1
-    """
-    if self.households.has_key(key):
-      return self.households[key]
-    else:
-      return None
-
-  def add_household(self, record):
-    household = Household(record)
-    key = household['SERIAL']
-    if key in self.households:
-      print "duplicate household %s" % key
-    else:
-      self.households[key] = household
-  def add_person(self, record):
-    person = Person(record)
-    hhkey = person['SERIALP']
-    if hhkey not in self.households:
-      print "-" + hhkey
-      self.orphans.append(person)
-    else:
-      self.households[hhkey].add_person(person)
-
-  def delete(self, key):
-    del self.households[key]
 
 def load_households(schemafile, householdsfile, peoplefile):
   schemas = load_schema(schemafile) 
@@ -129,32 +58,18 @@ def load_households(schemafile, householdsfile, peoplefile):
   Person.set_schema(schemas['P'])
   
   households = Households()
-  try:
-    with open(householdsfile) as records:
-      meter = spinner("Reading Household Data", 20)
-      for record in records:
-        meter.spin()
-        households.add_household(record)
-      meter.done() 
-  except IOError:
-    print "Error: (load_households) could not open file: " + householdsfile
-    exit()
-  try:
-    with open(peoplefile) as records:
-      meter = spinner("Reading Person Data",20)
-      for record in records:
-        meter.spin()
-        households.add_person(record)
-      meter.done()
-  except IOError:
-    print "Error: (load_households) could not open file: " + peoplefile
-    exit()
-    meter.done() 
+
+  # here's where we read the household and people files...
+  read_with_spinner(householdsfile,
+                    'Reading Household Data',
+                    households.add_household)
+  read_with_spinner(peoplefile,
+                    'Reading Person Data',
+                    households.add_person)
   return households
         
 def remove_incomplete(households):
   removals = []
-  incomplete = {}
   
   meter = spinner("Removing Incomplete Households", 20)
   for household in households:
@@ -162,17 +77,11 @@ def remove_incomplete(households):
     numpeople = int(household['NUMPREC'])
     if numpeople != household.num_people():
       removals.append(household['SERIAL'])
-      #print str(numpeople) + "-" + str(household.num_people())
-    else:
-      pass
-      #print str(numpeople) + "+" + str(household.num_people())
 
   for key in removals:
     meter.spin()
-    incomplete[key] = households[key]
-    households.delete(key)
+    households.move_to_incomplete(key)
   meter.done()
-  households.incomplete = incomplete 
   
 def write_households(households):
   with open('merged.txt','w') as records:
@@ -190,7 +99,7 @@ def write_errors(households):
     meter = spinner("Writing Errors", 20)
     counter = 0 
 
-    records.write("%d Incomplete Households:\n" % len(households.incomplete))
+    records.write("%d Incomplete Households:\n" % households.num_incomplete)
     for household in households.incomplete:
       meter.spin()
       if counter % 7 == 0:
@@ -198,7 +107,7 @@ def write_errors(households):
       counter += 1
       records.write("%s " % household)
     
-    records.write("\n\n%d Orphaned People:\n" % len(households.orphans))
+    records.write("\n\n%d Orphaned People:\n" % households.num_orphans)
       
     for orphan in households.orphans:
       meter.spin()

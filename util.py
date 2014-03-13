@@ -1,6 +1,7 @@
 import sys
 
 # a little class to do a "please wait..." ascii spinner
+
 class spinner():
   def __init__(self, message, rate):
     self.bars     = "/-\\|/-\\|"
@@ -25,6 +26,11 @@ class spinner():
       sys.stdout.write("\b%s" % self.bars[bar_index])
       sys.stdout.flush()
     self.counter += 1
+
+
+
+# function to handle reading from files, what happen
+# if the file doesn't exist, etc...
 
 def read_with_spinner(filename, msg, visitor_function):
   try:

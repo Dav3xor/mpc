@@ -1,5 +1,7 @@
 
 class Entity(object):
+  # using slots helps reduce
+  # per object memory use
   __slots__ = ['record', 'schema']
   def __init__(self, record):
     self.record = record
@@ -10,6 +12,7 @@ class Entity(object):
 
 class Person(Entity):
   schema = {}
+
   @staticmethod 
   def set_schema(newschema):
     Person.schema = newschema
@@ -17,9 +20,11 @@ class Person(Entity):
 class Household(Entity):
   __slots__ = ['people']
   schema = {}
+  
   def __init__(self, record):
     super(Household, self).__init__(record)
     self.people = []
+  
   @staticmethod 
   def set_schema(newschema):
     Household.schema = newschema
@@ -33,10 +38,12 @@ class Household(Entity):
 
 class Households(object):
   __slots__ = ['households','orphans','incomplete']
+  
   def __init__(self):
     self.households = {}
     self.orphans    = []
     self.incomplete = {}
+  
   def __iter__(self):
     """ allows you to iterate over households contained in
         the class with a simple 
@@ -67,6 +74,7 @@ class Households(object):
       print "duplicate household %s" % key
     else:
       self.households[key] = household
+  
   def add_person(self, record):
     person = Person(record)
     hhkey = person['SERIALP']
